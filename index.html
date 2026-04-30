@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>게이지 검교정 관리 | 한국정공</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --c0:#060a12;--c1:#0d1320;--c2:#121b2e;--c3:#1a2640;--c4:#223052;
+  --border:#1e3a5f;--border2:#2a4a6e;
+  --txt:#c8daf0;--txt2:#7a9bbf;--txt3:#3d6080;
+  --a:#0ea5e9;--a2:#0284c7;--a3:#38bdf8;
+  --green:#22d3a5;--green-bg:rgba(34,211,165,.1);--green-b:rgba(34,211,165,.25);
+  --yellow:#fbbf24;--yellow-bg:rgba(251,191,36,.1);--yellow-b:rgba(251,191,36,.25);
+  --orange:#fb923c;--orange-bg:rgba(251,146,60,.1);--orange-b:rgba(251,146,60,.25);
+  --red:#f87171;--red-bg:rgba(248,113,113,.1);--red-b:rgba(248,113,113,.25);
+  --gray:#64748b;--gray-bg:rgba(100,116,139,.08);--gray-b:rgba(100,116,139,.2);
+  --ok-bg:rgba(34,211,165,.12);--ok-c:#22d3a5;--ok-b:rgba(34,211,165,.3);
+  --ng-bg:rgba(248,113,113,.12);--ng-c:#f87171;--ng-b:rgba(248,113,113,.3);
+  --r:6px;--r2:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--c0);color:var(--txt);min-height:100vh;font-size:13px;line-height:1.5;overflow-x:hidden}
+
+/* ── SCAN OVERLAY ── */
+#scan-overlay{
+  position:fixed;inset:0;z-index:9999;
+  background:var(--c0);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:20px;
+  transition:opacity .4s;
+}
+#scan-overlay.hidden{opacity:0;pointer-events:none}
+.scan-logo{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:3px;color:var(--a);text-transform:uppercase}
+.scan-ring{
+  width:160px;height:160px;border-radius:50%;
+  border:2px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;
+  position:relative;animation:spin 8s linear infinite;
+}
+.scan-ring::before{
+  content:'';position:absolute;inset:-8px;border-radius:50%;
+  border:1px solid transparent;border-top-color:var(--a);
+  animation:spin 2s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.scan-icon{font-size:48px;animation:none;position:absolute}
+.scan-title{font-size:18px;font-weight:700;color:var(--txt)}
+.scan-sub{font-size:12px;color:var(--txt3)}
+
+/* ── NAV ── */
+nav{
+  height:52px;background:var(--c1);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:12px;padding:0 18px;
+  position:sticky;top:0;z-index:200;
+  backdrop-filter:blur(8px);
+}
+.nav-brand{
+  font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;
+  color:var(--a);text-transform:uppercase;white-space:nowrap;flex-shrink:0;
+}
+.nav-title{font-size:13px;font-weight:500;flex:1;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.search-box{
+  display:flex;align-items:center;gap:8px;
+  background:var(--c2);border:1px solid var(--border);border-radius:var(--r);
+  padding:6px 10px;width:240px;flex-shrink:0;
+  transition:border-color .2s;
+}
+.search-box:focus-within{border-color:var(--a)}
+.search-box input{background:none;border:none;outline:none;color:var(--txt);font-size:12px;width:100%;font-family:inherit}
+.search-box input::placeholder{color:var(--txt3)}
+.nav-btn{
+  background:var(--a);color:#fff;border:none;border-radius:var(--r);
+  padding:6px 13px;font-size:11px;font-weight:700;cursor:pointer;
+  letter-spacing:.5px;white-space:nowrap;flex-shrink:0;
+  transition:background .15s,transform .1s;font-family:inherit;
+}
+.nav-btn:hover{background:var(--a2);transform:translateY(-1px)}
+.nav-btn.sec{background:var(--c3);color:var(--txt2);border:1px solid var(--border)}
+.nav-btn.sec:hover{background:var(--c4);color:var(--txt)}
+
+/* ── VIEWS ── */
+#view-detail,#view-print{display:none}
+
+/* ── DASHBOARD ── */
+.dash{padding:18px;max-width:1440px;margin:0 auto}
+
+/* Stats */
+.stat-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:18px}
+.stat-card{
+  background:var(--c1);border:1px solid var(--border);border-radius:var(--r2);
+  padding:14px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;
+}
+.stat-card::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:2px;
+  background:var(--accent-c,var(--border));opacity:.6;
+}
+.stat-card:hover{border-color:var(--accent-c,var(--a));transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.stat-card.active{background:var(--c2);border-color:var(--accent-c,var(--a))}
+.stat-card .s-label{font-size:10px;color:var(--txt3);font-weight:500;letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px}
+.stat-card .s-val{font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:700;line-height:1;color:var(--accent-c,var(--txt))}
+.stat-card .s-sub{font-size:10px;color:var(--txt3);margin-top:4px}
+
+/* Filter */
+.filter-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.fselect{
+  background:var(--c2);border:1px solid var(--border);color:var(--txt);
+  border-radius:var(--r);padding:6px 10px;font-size:12px;font-family:inherit;
+  outline:none;cursor:pointer;transition:border-color .2s;
+}
+.fselect:focus{border-color:var(--a)}
+.f-count{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt3)}
+
+/* Table */
+.tbl-wrap{background:var(--c1);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden}
+.tbl-wrap table{width:100%;border-collapse:collapse}
+thead tr{background:var(--c2)}
+th{padding:9px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--txt3);
+   letter-spacing:.8px;text-transform:uppercase;white-space:nowrap;border-bottom:1px solid var(--border)}
+td{padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px;vertical-align:middle;color:var(--txt)}
+tbody tr:last-child td{border-bottom:none}
+tbody tr{transition:background .1s;cursor:pointer}
+tbody tr:hover{background:rgba(14,165,233,.05)}
+.mono{font-family:'JetBrains Mono',monospace;font-size:11px}
+.id-cell{color:var(--a);font-weight:500}
+.no-res{text-align:center;padding:60px;color:var(--txt3)}
+
+/* Status badges */
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:100px;font-size:10px;font-weight:700;white-space:nowrap}
+.b-유효   {background:var(--green-bg);color:var(--green); border:1px solid var(--green-b)}
+.b-주의   {background:var(--yellow-bg);color:var(--yellow);border:1px solid var(--yellow-b)}
+.b-만료임박{background:var(--orange-bg);color:var(--orange);border:1px solid var(--orange-b)}
+.b-기간초과{background:var(--red-bg);color:var(--red);    border:1px solid var(--red-b)}
+.b-관리제외{background:var(--gray-bg);color:var(--gray);  border:1px solid var(--gray-b)}
+.b-일정미정{background:rgba(30,58,95,.3);color:var(--txt3);border:1px solid var(--border)}
+
+.judg-ok{display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:var(--ok-bg);color:var(--ok-c);border:1px solid var(--ok-b)}
+.judg-ng{display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:var(--ng-bg);color:var(--ng-c);border:1px solid var(--ng-b)}
+
+.dday-ok  {color:var(--green);font-weight:600}
+.dday-warn{color:var(--yellow);font-weight:600}
+.dday-soon{color:var(--orange);font-weight:700}
+.dday-over{color:var(--red);font-weight:700}
+
+/* ── DETAIL ── */
+.det-wrap{padding:18px;max-width:960px;margin:0 auto}
+.back-btn{
+  display:inline-flex;align-items:center;gap:6px;color:var(--txt2);font-size:12px;
+  cursor:pointer;margin-bottom:18px;padding:6px 12px;border-radius:var(--r);
+  border:1px solid var(--border);background:var(--c1);transition:all .15s;
+}
+.back-btn:hover{color:var(--txt);border-color:var(--a);background:var(--c2)}
+
+.det-hero{
+  background:var(--c1);border:1px solid var(--border);border-radius:var(--r2);
+  padding:22px;margin-bottom:14px;display:grid;
+  grid-template-columns:auto 1fr auto;gap:20px;align-items:start;
+}
+.det-qr-box{
+  background:#fff;border-radius:8px;padding:10px;
+  width:130px;display:flex;flex-direction:column;align-items:center;gap:5px;flex-shrink:0;
+}
+.det-qr-id{font-family:'JetBrains Mono',monospace;font-size:8px;color:#1a2540;font-weight:700;text-align:center;line-height:1.3}
+.det-main{min-width:0}
+.det-name{font-size:20px;font-weight:700;margin-bottom:3px;line-height:1.3}
+.det-id{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--a);margin-bottom:10px}
+.det-status-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.dday-big{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700;line-height:1}
+.dday-sub{font-size:10px;color:var(--txt3);margin-top:3px}
+.det-note{font-size:11px;color:var(--txt3);padding:6px 10px;background:var(--c2);border-radius:var(--r);border-left:2px solid var(--border2)}
+
+.det-actions{display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+
+/* Info cards grid */
+.info-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.info-card{background:var(--c1);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px}
+.info-card.span2{grid-column:span 2}
+.info-card.highlight{border-color:var(--border2);background:var(--c2)}
+.ic-label{font-size:10px;color:var(--txt3);font-weight:600;letter-spacing:.8px;text-transform:uppercase;margin-bottom:4px}
+.ic-val{font-size:13px;font-weight:500;color:var(--txt)}
+.ic-val.mono{font-family:'JetBrains Mono',monospace;font-size:12px}
+
+/* UC section */
+.uc-section{
+  background:var(--c1);border:1px solid var(--border);border-radius:var(--r2);
+  padding:18px;margin-bottom:14px;
+}
+.uc-section h3{font-size:11px;font-weight:700;color:var(--txt3);letter-spacing:.8px;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.uc-section h3::after{content:'';flex:1;height:1px;background:var(--border)}
+.uc-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.uc-card{background:var(--c2);border-radius:var(--r);padding:12px;text-align:center}
+.uc-card .uc-label{font-size:10px;color:var(--txt3);margin-bottom:6px;letter-spacing:.5px}
+.uc-card .uc-val{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700}
+
+/* Timeline */
+.timeline-section{background:var(--c1);border:1px solid var(--border);border-radius:var(--r2);padding:18px;margin-bottom:14px}
+.timeline-section h3{font-size:11px;font-weight:700;color:var(--txt3);letter-spacing:.8px;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.timeline-section h3::after{content:'';flex:1;height:1px;background:var(--border)}
+.tl-item{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)}
+.tl-item:last-child{border-bottom:none}
+.tl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.tl-label{font-size:11px;color:var(--txt3);width:100px;flex-shrink:0}
+.tl-date{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500}
+
+/* RR section */
+.rr-section{background:var(--c1);border:1px solid var(--border);border-radius:var(--r2);padding:18px}
+.rr-section h3{font-size:11px;font-weight:700;color:var(--txt3);letter-spacing:.8px;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.rr-section h3::after{content:'';flex:1;height:1px;background:var(--border)}
+.rr-row{display:flex;gap:14px}
+.rr-chip{padding:6px 16px;border-radius:var(--r);font-size:12px;font-weight:600;background:var(--c2);border:1px solid var(--border)}
+
+/* ── PRINT ── */
+.print-wrap{padding:18px;max-width:1200px;margin:0 auto}
+.print-ctrl{
+  background:var(--c1);border:1px solid var(--border);border-radius:var(--r2);
+  padding:14px 18px;margin-bottom:18px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;
+}
+.print-ctrl h3{font-size:13px;font-weight:600;flex:1}
+.lbl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.lbl-card{
+  background:#fff;border:1px solid #d1dce8;border-radius:6px;
+  padding:10px;display:flex;flex-direction:column;align-items:center;gap:5px;
+}
+.lbl-card .lc-id{font-family:'JetBrains Mono',monospace;font-size:9px;color:#0d1320;font-weight:700}
+.lbl-card .lc-name{font-size:8px;color:#334155;text-align:center;line-height:1.3}
+.lbl-card .lc-status{font-size:8px;font-weight:700;padding:1px 7px;border-radius:100px}
+.lbl-card .lc-date{font-size:8px;color:#64748b;font-family:monospace}
+.lbl-card .lc-judg{font-size:8px;font-weight:700;padding:1px 7px;border-radius:3px}
+.ls-유효   {background:#d1fae5;color:#065f46}
+.ls-주의   {background:#fef9c3;color:#713f12}
+.ls-만료임박{background:#ffedd5;color:#9a3412}
+.ls-기간초과{background:#fee2e2;color:#991b1b}
+.ls-관리제외{background:#f1f5f9;color:#475569}
+.ls-일정미정{background:#f8fafc;color:#94a3b8}
+.lj-ok{background:#d1fae5;color:#065f46}
+.lj-ng{background:#fee2e2;color:#991b1b}
+
+/* Responsive */
+@media(max-width:900px){
+  .stat-grid{grid-template-columns:repeat(3,1fr)}
+  .info-grid{grid-template-columns:repeat(2,1fr)}
+  .uc-row{grid-template-columns:repeat(2,1fr)}
+  .det-hero{grid-template-columns:1fr;text-align:center}
+  .det-qr-box{margin:0 auto}
+  th:nth-child(n+5){display:none}td:nth-child(n+5){display:none}
+}
+@media(max-width:600px){
+  .stat-grid{grid-template-columns:repeat(2,1fr)}
+  nav .search-box{display:none}
+  .det-actions{flex-direction:row;justify-content:center}
+}
+@media print{
+  nav,.back-btn,.filter-row,.stat-grid,.print-ctrl{display:none!important}
+  body{background:#fff;color:#000}
+  .lbl-grid{grid-template-columns:repeat(5,1fr);gap:6px}
+  .lbl-card{break-inside:avoid;border-color:#999}
+}
+</style>
+</head>
+<body>
+
+<!-- Scan Overlay -->
+<div id="scan-overlay">
+  <div class="scan-logo">KWQMS — Gauge QR System</div>
+  <div class="scan-ring"><div class="scan-icon">⚙</div></div>
+  <div class="scan-title">한국정공 게이지 관리 시스템</div>
+  <div class="scan-sub">데이터를 불러오는 중...</div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-brand">KWQMS</div>
+  <div class="nav-title" id="nav-title">게이지 검교정 관리</div>
+  <div class="search-box" id="search-box">
+    <svg width="13" height="13" fill="none" stroke="#3d6080" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input id="search-input" placeholder="관리번호 · 명칭 · 위치 검색" autocomplete="off">
+  </div>
+  <button class="nav-btn sec" id="btn-print-nav" onclick="showPrint()">🖨 라벨출력</button>
+</nav>
+
+<!-- ════ LIST ════ -->
+<div id="view-list">
+<div class="dash">
+
+  <!-- Stats -->
+  <div class="stat-grid" id="stat-grid"></div>
+
+  <!-- Filters -->
+  <div class="filter-row">
+    <select class="fselect" id="f-status" onchange="applyFilters()">
+      <option value="">전체 상태</option>
+      <option value="기간초과">🔴 기간초과</option>
+      <option value="만료임박">🟠 만료임박</option>
+      <option value="주의">🟡 주의</option>
+      <option value="유효">🟢 유효</option>
+      <option value="일정미정">⬜ 일정미정</option>
+      <option value="관리제외">⚫ 관리제외</option>
+    </select>
+    <select class="fselect" id="f-loc" onchange="applyFilters()"><option value="">전체 위치</option></select>
+    <select class="fselect" id="f-grade" onchange="applyFilters()">
+      <option value="">전체 등급</option>
+      <option value="A">A급</option><option value="B">B급</option><option value="C">C급</option>
+    </select>
+    <select class="fselect" id="f-judg" onchange="applyFilters()">
+      <option value="">판정 전체</option>
+      <option value="OK">✅ OK</option>
+      <option value="NG">❌ NG</option>
+    </select>
+    <select class="fselect" id="f-rr" onchange="applyFilters()">
+      <option value="">R&R 전체</option>
+      <option value="○">R&R 대상</option>
+      <option value="X">R&R 제외</option>
+    </select>
+    <span class="f-count" id="f-count"></span>
+  </div>
+
+  <!-- Table -->
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>NO</th><th>관리번호</th><th>명칭</th><th>사내위치</th>
+        <th>등급</th><th>주기</th><th>차기검교정일</th><th>D-Day</th>
+        <th>교정상태</th><th>판정</th><th>R&R</th>
+      </tr></thead>
+      <tbody id="tbl-body"></tbody>
+    </table>
+    <div class="no-res" id="no-res" style="display:none">검색 결과가 없습니다.</div>
+  </div>
+</div>
+</div>
+
+<!-- ════ DETAIL ════ -->
+<div id="view-detail">
+<div class="det-wrap">
+  <div class="back-btn" onclick="showList()">← 목록으로</div>
+
+  <div class="det-hero">
+    <div class="det-qr-box">
+      <div id="det-qr"></div>
+      <div class="det-qr-id" id="det-qr-id"></div>
+    </div>
+    <div class="det-main">
+      <div class="det-name" id="d-name"></div>
+      <div class="det-id" id="d-id"></div>
+      <div class="det-status-row" id="d-status-row"></div>
+      <div id="d-note" style="display:none" class="det-note"></div>
+    </div>
+    <div class="det-actions">
+      <button class="nav-btn" onclick="printOneLbl()">🖨 라벨출력</button>
+    </div>
+  </div>
+
+  <div class="info-grid" id="d-info"></div>
+  <div class="uc-section" id="d-uc"></div>
+  <div class="timeline-section" id="d-tl"></div>
+  <div class="rr-section" id="d-rr"></div>
+</div>
+</div>
+
+<!-- ════ PRINT ════ -->
+<div id="view-print">
+<div class="print-wrap">
+  <div class="back-btn" onclick="showList()">← 목록으로</div>
+  <div class="print-ctrl">
+    <h3>📋 QR 라벨 일괄 출력</h3>
+    <select class="fselect" id="p-status" onchange="renderLabels()">
+      <option value="">전체</option>
+      <option value="유효">유효만</option>
+      <option value="기간초과">기간초과만</option>
+      <option value="만료임박">만료임박만</option>
+      <option value="관리제외 제외">관리제외 제외</option>
+    </select>
+    <select class="fselect" id="p-loc" onchange="renderLabels()"><option value="">전체 위치</option></select>
+    <span class="f-count" id="p-count"></span>
+    <button class="nav-btn" onclick="window.print()">🖨 인쇄</button>
+  </div>
+  <div class="lbl-grid" id="lbl-grid"></div>
+</div>
+</div>
+
+<script>
+const G=[{"no": 1, "id": "KL3D-002", "name": "3차원 측정기", "serial": "91190", "spec": "1,560X1,600X600mm", "maker": "ZEISS", "location": "측정실", "usable": "○", "grade": "B", "cycle": "2년", "prev": "2025-09-26", "next": "2027-10-31", "calDate": "", "dday": 549, "status": "유효", "minTol": "0.4", "ucLimit": "0.1", "uc": "0.015", "corr": "", "judg": "OK", "plan26": 0, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 2, "id": "KL2D-003", "name": "2차원 측정기", "serial": "003107", "spec": "350mm", "maker": "MITUTOYO", "location": "수입검사실", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "0.02", "ucLimit": "0.005", "uc": "0.015", "corr": "", "judg": "NG", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 3, "id": "KL2D-006", "name": "2차원 측정기", "serial": "0000512", "spec": "350mm", "maker": "MITUTOYO", "location": "측정실", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-10", "next": "2026-04-30", "calDate": "2026-04-08", "dday": 0, "status": "만료임박", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 4, "id": "KL2D-007", "name": "2차원 측정기", "serial": "0002099", "spec": "350mm", "maker": "MITUTOYO", "location": "CNC", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-10", "next": "2026-04-30", "calDate": "2026-04-08", "dday": 0, "status": "만료임박", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 5, "id": "KOFM-001", "name": "형상 측정기", "serial": "MEX 07120-05", "spec": "100mm", "maker": "KOSAKA", "location": "측정실", "usable": "○", "grade": "B", "cycle": "2년", "prev": "2024-10-14", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 6, "id": "KOPP-003", "name": "투영기(측정실)", "serial": "000031601", "spec": "250X100mm", "maker": "MITUTOYO", "location": "측정실", "usable": "○", "grade": "B", "cycle": "2년", "prev": "2024-10-14", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 0, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 7, "id": "KOHT-005", "name": "로크웰 경도기", "serial": "DTR-300N\n14-K3152-P", "spec": "60 ~ 150kg", "maker": "대경테크", "location": "수입검사실", "usable": "○", "grade": "B", "cycle": "2년", "prev": "2025-09-26", "next": "2027-10-31", "calDate": "", "dday": 549, "status": "유효", "minTol": "", "ucLimit": "0", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 8, "id": "K01H-001", "name": "조도측정기", "serial": "SURFCOM 50A\nKA1101DM", "spec": "Ra,Rz", "maker": "ACCRETECH", "location": "측정실", "usable": "○", "grade": "B", "cycle": "2년", "prev": "2025-09-26", "next": "2027-10-31", "calDate": "", "dday": 549, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 9, "id": "KOBG-002", "name": "게이지 블록", "serial": "-", "spec": "47품 1급", "maker": "Feku", "location": "측정실", "usable": "○", "grade": "B", "cycle": "2년", "prev": "2025-07-28", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.005", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 10, "id": "KOPM-002", "name": "도막두께측정기", "serial": "SM05914", "spec": "1500㎛", "maker": "ELCOMETER", "location": "수입검사실", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "", "ucLimit": "0", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 11, "id": "KLHG-005", "name": "디지매틱 하이트게이지", "serial": "0322198", "spec": "300 / 0.01mm", "maker": "MITUTOYO", "location": "피어싱 D", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 12, "id": "KLHG-013", "name": "디지매틱 하이트게이지", "serial": "0405492", "spec": "300 / 0.01mm", "maker": "MITUTOYO", "location": "피어싱 B", "usable": "○", "grade": "-", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 13, "id": "KLHG-014", "name": "디지매틱 하이트게이지", "serial": "2000014", "spec": "300 / 0.01mm", "maker": "MITUTOYO", "location": "측정실", "usable": "○", "grade": "-", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 14, "id": "KLHG-015", "name": "디지매틱 하이트게이지", "serial": "2002797", "spec": "300 / 0.01mm", "maker": "INSIZE", "location": "측정실", "usable": "○", "grade": "-", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 0, "rrTarget": "X", "rrCycle": "1년", "note": ""}, {"no": 15, "id": "KLVC-036", "name": "디지매틱 버니어캘리퍼스", "serial": "10337139", "spec": "200 / 0.01mm", "maker": "MITUTOYO", "location": "기술연구소", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 16, "id": "KLVC-054", "name": "디지매틱 버니어캘리퍼스", "serial": "12196790", "spec": "200 / 0.01mm", "maker": "MITUTOYO", "location": "피어싱 A", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 17, "id": "KLVC-078", "name": "디지매틱 버니어캘리퍼스", "serial": "14405419", "spec": "200 / 0.01mm", "maker": "MITUTOYO", "location": "피어싱", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 18, "id": "KLVC-086", "name": "디지매틱 버니어캘리퍼스", "serial": "1139648", "spec": "300 / 0.01mm", "maker": "MITUTOYO", "location": "피어싱 D", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 19, "id": "KLVC-090", "name": "디지매틱 버니어캘리퍼스", "serial": "0053614", "spec": "300 / 0.01mm", "maker": "MITUTOYO", "location": "CNC D", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 20, "id": "KLVC-098", "name": "디지매틱 버니어캘리퍼스", "serial": "0003234", "spec": "300 / 0.01mm", "maker": "MITUTOYO", "location": "A.B.C.D", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 21, "id": "KLVC-100", "name": "디지매틱 버니어캘리퍼스", "serial": "0002724", "spec": "300 / 0.01mm", "maker": "MITUTOYO", "location": "CNC K", "usable": "X", "grade": "C", "cycle": "1년", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "○", "rrCycle": "1년", "note": "폐기 보정값(0.08)"}, {"no": 22, "id": "KLVC-111", "name": "디지매틱 버니어캘리퍼스", "serial": "0039564", "spec": "300 / 0.01mm", "maker": "MITUTOYO", "location": "수입검사실", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 23, "id": "KLVC-112", "name": "디지매틱 버니어캘리퍼스", "serial": "B21005603", "spec": "200 / 0.01mm", "maker": "MITUTOYO", "location": "CNC M", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 24, "id": "KLVC-113", "name": "디지매틱 버니어캘리퍼스", "serial": "B21164420", "spec": "200 / 0.01mm", "maker": "MITUTOYO", "location": "CNC A/B", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 25, "id": "KLVC-114", "name": "디지매틱 버니어캘리퍼스", "serial": "B21164584", "spec": "200 / 0.01mm", "maker": "MITUTOYO", "location": "CNC O/P", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 26, "id": "KLVC-115", "name": "디지매틱 버니어캘리퍼스", "serial": "0060942", "spec": "300 / 0.01mm", "maker": "MITUTOYO", "location": "CNC G/H", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 27, "id": "KLVC-116", "name": "디지매틱 버니어캘리퍼스", "serial": "B22230810", "spec": "200 / 0.01mm", "maker": "MITUTOYO", "location": "CNC N", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 28, "id": "KLVC-118", "name": "디지매틱 버니어캘리퍼스", "serial": "0067886", "spec": "300 / 0.01mm", "maker": "MITUTOYO", "location": "CNC E/F", "usable": "○", "grade": "A", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 29, "id": "KLVC-119", "name": "디지매틱 버니어캘리퍼스", "serial": "B22331644", "spec": "200 / 0.01mm", "maker": "MITUTOYO", "location": "CNC I/J", "usable": "○", "grade": "A", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 30, "id": "KLVC-120", "name": "디지매틱 버니어캘리퍼스", "serial": "0066181", "spec": "300 / 0.01mm", "maker": "MITUTOYO", "location": "CNC(SPIDER&INNER RACE)", "usable": "○", "grade": "A", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 31, "id": "KLVC-121", "name": "디지매틱 버니어캘리퍼스", "serial": "0086740", "spec": "300 / 0.01mm", "maker": "MITUTOYO", "location": "CNC(SPIDER&INNER RACE)", "usable": "○", "grade": "A", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 32, "id": "KLVC-122", "name": "디지매틱 버니어캘리퍼스", "serial": "A23309656", "spec": "200 / 0.01mm", "maker": "MITUTOYO", "location": "CNC H/G", "usable": "X", "grade": "", "cycle": "", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": "폐기"}, {"no": 33, "id": "KLVC-123", "name": "디지매틱 버니어캘리퍼스", "serial": "0089362", "spec": "300 / 0.01mm", "maker": "MITUTOYO", "location": "측정실", "usable": "○", "grade": "A", "cycle": "1년", "prev": "2025-03-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": "25.03.17 구매"}, {"no": 34, "id": "KLVC-124", "name": "디지매틱 버니어캘리퍼스", "serial": "0089368", "spec": "300 / 0.01mm", "maker": "MITUTOYO", "location": "측정실", "usable": "○", "grade": "A", "cycle": "1년", "prev": "2025-03-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": "25.03.17 구매"}, {"no": 35, "id": "KLVC-125", "name": "디지매틱 버니어캘리퍼스", "serial": "0095383", "spec": "300 / 0.01mm", "maker": "MITUTOYO", "location": "측정실", "usable": "○", "grade": "A", "cycle": "1년", "prev": "2025-12-18", "next": "2025-10-31", "calDate": "", "dday": -181, "status": "기간초과", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": "25.12.18 구매"}, {"no": 36, "id": "KLVC-126", "name": "디지매틱 버니어캘리퍼스", "serial": "0095400", "spec": "300 / 0.01mm", "maker": "MITUTOYO", "location": "SPARE", "usable": "○", "grade": "A", "cycle": "1년", "prev": "2025-12-18", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": "25.12.18 구매"}, {"no": 37, "id": "KWSC-005", "name": "전자식 지시저울", "serial": "MW-II (MG422)", "spec": "6000g/0.1g", "maker": "FINE", "location": "현풍2공장", "usable": "○", "grade": "-", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "±0.1", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": "분동으로검교정"}, {"no": 38, "id": "KPDG-001", "name": "게이지 압용 압력계", "serial": "KPDG-001", "spec": "5 Mpa(유압)", "maker": "JAE RYONG", "location": "생산기술부", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.1", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 39, "id": "KPDG-002", "name": "게이지 압용 압력계", "serial": "KPDG-002", "spec": "1Mpa(air)", "maker": "SEHKWANG", "location": "생산기술부", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.1", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 40, "id": "KPDG-003", "name": "게이지 압용 압력계", "serial": "KPDG-003", "spec": "0.2 Mpa(air)", "maker": "NKS", "location": "생산기술부", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.1", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 41, "id": "KPDG-004", "name": "게이지 압용 압력계", "serial": "KPDG-004", "spec": "35Mpa(유압)", "maker": "JAE RYONG", "location": "생산기술부", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.1", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 42, "id": "KPDG-005", "name": "게이지 압용 압력계", "serial": "KPDG-005", "spec": "10 Mpa(유압)", "maker": "JAE RYONG", "location": "생산기술부", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.1", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 43, "id": "KPDG-006", "name": "게이지 압용 압력계", "serial": "KPDG-006", "spec": "5 Mpa(유압)", "maker": "JAE RYONG", "location": "생산기술부", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.1", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 44, "id": "KOCH-001", "name": "진원도 측정기", "serial": "MS-02604", "spec": "300mm", "maker": "KOSAKA", "location": "측정실", "usable": "○", "grade": "B", "cycle": "2년", "prev": "", "next": "", "calDate": "", "dday": null, "status": "일정미정", "minTol": "", "ucLimit": "0", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": "PC고장"}, {"no": 45, "id": "KLDL-001", "name": "인디케이터", "serial": "KUH043", "spec": "0.8mm/0.01mm", "maker": "MITUTOYO", "location": "피어싱", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "", "dday": null, "status": "일정미정", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 46, "id": "KLDL-002", "name": "인디케이터", "serial": "TQD898", "spec": "0.8mm/0.01mm", "maker": "MITUTOYO", "location": "피어싱 D", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 47, "id": "KLDL-007", "name": "디지메틱 게이지", "serial": "16056800", "spec": "12.7mm/0.001mm", "maker": "MITUTOYO", "location": "측정실", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 48, "id": "KLDL-008", "name": "인디케이터", "serial": "ZBZ138", "spec": "0.8mm/0.01mm", "maker": "MITUTOYO", "location": "피어싱 B", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 49, "id": "KLDL-024", "name": "디지메틱 게이지", "serial": "17111658", "spec": "12.7mm/0.001mm", "maker": "MITUTOYO", "location": "측정실", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 50, "id": "KLDL-029", "name": "인디케이터", "serial": "DJE756", "spec": "0.8mm/0.01mm", "maker": "MITUTOYO", "location": "CNC", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2024-10-14", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 51, "id": "KLDL-030", "name": "디지메틱 게이지", "serial": "21355", "spec": "12.7mm/0.01mm", "maker": "MITUTOYO", "location": "품질보증부", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2023-07-11", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 52, "id": "KLDL-031", "name": "디지메틱 게이지", "serial": "034697", "spec": "12.7mm/0.01mm", "maker": "MITUTOYO", "location": "품질보증부", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 53, "id": "KWWC-005", "name": "분동 (20g)", "serial": "15-8", "spec": "20g", "maker": "20M", "location": "수입검사실", "usable": "○", "grade": "B", "cycle": "2년", "prev": "2024-10-18", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.5", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 54, "id": "KWWC-006", "name": "분동 (500g)", "serial": "15-53", "spec": "500g", "maker": "500M", "location": "수입검사실", "usable": "○", "grade": "B", "cycle": "2년", "prev": "2024-10-18", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.5", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 55, "id": "KLDG-001", "name": "뎁스게이지", "serial": "0023673", "spec": "150 / 0.01mm", "maker": "MITUTOYO", "location": "CNC", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 56, "id": "KLMM-002", "name": "3점 마이크로미터", "serial": "048214", "spec": "25~30mm", "maker": "MITUTOYO", "location": "CNC(SPIDER&INNER RACE)", "usable": "○", "grade": "A", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "±0.005", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": "링게이지로 검교정"}, {"no": 57, "id": "KCRG-012", "name": "원통형 RING MASTER", "serial": "220973", "spec": "30mm (29.997)", "maker": "MITUTOYO", "location": "CNC(SPIDER&INNER RACE)", "usable": "○", "grade": "A", "cycle": "2년", "prev": "2025-04-14", "next": "", "calDate": "", "dday": null, "status": "일정미정", "minTol": "±0.005", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 58, "id": "KLMM-003", "name": "3점 마이크로미터", "serial": "048333(6248444)", "spec": "40~50mm", "maker": "MITUTOYO", "location": "CNC(SPIDER&INNER RACE)", "usable": "○", "grade": "A", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "±0.005", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": "링게이지로 검교정"}, {"no": 59, "id": "KCRG-013", "name": "원통형 RING MASTER", "serial": "211113", "spec": "40mm (39.997)", "maker": "MITUTOYO", "location": "CNC(SPIDER&INNER RACE)", "usable": "○", "grade": "A", "cycle": "2년", "prev": "2025-04-14", "next": "", "calDate": "", "dday": null, "status": "일정미정", "minTol": "±0.005", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 60, "id": "KLMM-023", "name": "외측 마이크로메터", "serial": "76041034", "spec": "25~50mm", "maker": "MITUTOYO", "location": "CNC(SPIDER&INNER RACE)", "usable": "○", "grade": "A", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "±0.005", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": "링게이지로 검교정"}, {"no": 61, "id": "KOBG-003", "name": "평형블럭 게이지", "serial": "-", "spec": "6SET", "maker": "Starrett", "location": "CNC(SPIDER&INNER RACE)", "usable": "○", "grade": "A", "cycle": "-", "prev": "2023-11-24", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "±0.005", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 62, "id": "KLMM-004", "name": "3점 마이크로미터", "serial": "053210(6257056)", "spec": "30~40mm", "maker": "MITUTOYO", "location": "CNC(SPIDER&INNER RACE)", "usable": "○", "grade": "A", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "±0.005", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": "링게이지로 검교정"}, {"no": 63, "id": "KCRG-014", "name": "원통형 RING MASTER", "serial": "230536", "spec": "30mm (29.999)", "maker": "MITUTOYO", "location": "CNC(SPIDER&INNER RACE)", "usable": "○", "grade": "A", "cycle": "2년", "prev": "2024-03-21", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.005", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 64, "id": "KLMM-005", "name": "디지털 내경 캘리퍼게이지", "serial": "IE37W068", "spec": "20~40mm", "maker": "Kroeplin", "location": "CNC(SPIDER&INNER RACE)", "usable": "○", "grade": "A", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": "링게이지로 검교정"}, {"no": 65, "id": "KLMM-006", "name": "스플라인내측측정기", "serial": "700068", "spec": "33.79~33.79mm", "maker": "BOWERS", "location": "CNC(SPIDER&INNER RACE)", "usable": "○", "grade": "A", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "±0.005", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": "링게이지로 검교정"}, {"no": 66, "id": "KLMM-007", "name": "3점 마이크로미터", "serial": "065927(6303966)", "spec": "30~40mm", "maker": "MITUTOYO", "location": "CNC(SPIDER&INNER RACE)", "usable": "○", "grade": "A", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "±0.005", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": "26.03.30 신규구매"}, {"no": 67, "id": "KCRG-014", "name": "원통형 RING MASTER", "serial": "468909", "spec": "35mm (34.998)", "maker": "BOWERS", "location": "CNC(SPIDER&INNER RACE)", "usable": "○", "grade": "A", "cycle": "2년", "prev": "2024-06-11", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.005", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 68, "id": "KLHG-020", "name": "디지매틱 하이트게이지", "serial": "0008883", "spec": "300 / 0.01mm", "maker": "MITUTOYO", "location": "CNC(SPIDER&INNER RACE)", "usable": "○", "grade": "A", "cycle": "X", "prev": "2026-03-30", "next": "2027-04-30", "calDate": "", "dday": null, "status": "관리제외", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": "26.03.30 신규구매"}, {"no": 69, "id": "KL2D-004", "name": "2차원 측정기", "serial": "0000384", "spec": "350mm", "maker": "MITUTOYO", "location": "베어링 조립 C", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 70, "id": "KL2D-005", "name": "2차원 측정기", "serial": "0000222", "spec": "350mm", "maker": "MITUTOYO", "location": "베어링 조립 B", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "0.023", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 71, "id": "KOBP-01", "name": "압축시험기(로드셀)", "serial": "서보프레스\n(압입) A-1", "spec": "19.61kN", "maker": "C&M Robotics", "location": "베어링 조립 A", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±3", "ucLimit": "#VALUE!", "uc": "", "corr": "0.23", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 72, "id": "KOBP-02", "name": "압축시험기(로드셀)", "serial": "코킹프레스\nA-2", "spec": "49.03kN", "maker": "C&M Robotics", "location": "베어링 조립 A", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±3", "ucLimit": "#VALUE!", "uc": "", "corr": "0.14", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 73, "id": "KOBP-03", "name": "압축시험기(로드셀)", "serial": "마찰재접착강도\nA-3", "spec": "30kgf (6EA)", "maker": "BONGSHIN", "location": "베어링 조립 A", "usable": "○", "grade": "-", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±3", "ucLimit": "#VALUE!", "uc": "", "corr": "0", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 74, "id": "KOBP-04", "name": "압축시험기(로드셀)", "serial": "서보프레스(압입)\nB-1 / 1610332", "spec": "2ton", "maker": "C&M Robotics", "location": "베어링 조립 B", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±3", "ucLimit": "#VALUE!", "uc": "", "corr": "0.23", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 75, "id": "KOBP-05", "name": "압축시험기(로드셀)", "serial": "코킹프레스 B-2", "spec": "49.03kN", "maker": "SETech", "location": "베어링 조립 B", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±3", "ucLimit": "#VALUE!", "uc": "", "corr": "0.14", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 76, "id": "KOBP-06", "name": "압축시험기(로드셀)", "serial": "마찰재접착강도\nB-3", "spec": "50kgf", "maker": "세화\nSI-3000", "location": "베어링 조립 B", "usable": "○", "grade": "-", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±3", "ucLimit": "#VALUE!", "uc": "", "corr": "0", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 77, "id": "KOBP-07", "name": "압축시험기(로드셀)", "serial": "서보프레스 (압입, 코킹)\n F-1 / 1701001", "spec": "7ton", "maker": "C&M Robotics", "location": "베어링 조립 F", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±3", "ucLimit": "#VALUE!", "uc": "", "corr": "0.14", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 78, "id": "KOBP-08", "name": "압축시험기(로드셀)", "serial": "서보프레스(압입)\nC-1", "spec": "19.61kN", "maker": "C&M Robotics", "location": "베어링 조립 C", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±3", "ucLimit": "#VALUE!", "uc": "", "corr": "0.22", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 79, "id": "KOBP-09", "name": "압축시험기(로드셀)", "serial": "코킹프레스\nC-2", "spec": "49.03kN", "maker": "C&M Robotics", "location": "베어링 조립 C", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±3", "ucLimit": "#VALUE!", "uc": "", "corr": "0.14", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 80, "id": "KOBP-10", "name": "압축시험기(로드셀)", "serial": "마찰재접착강도\nC-3", "spec": "30kgf (6EA)", "maker": "BONGSHIN", "location": "베어링 조립 C", "usable": "○", "grade": "-", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±3", "ucLimit": "#VALUE!", "uc": "", "corr": "0", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 81, "id": "KOBP-11", "name": "압축시험기(로드셀)", "serial": "서보프레스 E-2 (코킹) P203902", "spec": "49.033KN", "maker": "UNIPLUSE", "location": "베어링 조립 E2", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±3", "ucLimit": "#VALUE!", "uc": "", "corr": "0.16", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 82, "id": "KOBP-12", "name": "압축시험기(로드셀)", "serial": "코킹프레스 E-2 (압입) M353801", "spec": "4.903KN", "maker": "UNIPLUSE", "location": "베어링 조립 E2", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±3", "ucLimit": "#VALUE!", "uc": "", "corr": "0.28", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 83, "id": "KOBP-13", "name": "압축시험기(로드셀)", "serial": "서보프레스 D-1 (압입) 21010056", "spec": "KN", "maker": "C&M Robotics", "location": "베어링 조립 D1", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±3", "ucLimit": "#VALUE!", "uc": "", "corr": "0.14", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 84, "id": "KOBP-14", "name": "압축시험기(로드셀)", "serial": "코킹프레스 D-1 (코킹) 21010055", "spec": "KN", "maker": "C&M Robotics", "location": "베어링 조립 D1", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±3", "ucLimit": "#VALUE!", "uc": "", "corr": "0.2", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 85, "id": "KOBP-15", "name": "압축시험기(로드셀)", "serial": "서보프레스 D-2 (압입) 1703020", "spec": "KN", "maker": "C&M Robotics", "location": "베어링 조립 D2", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±3", "ucLimit": "#VALUE!", "uc": "", "corr": "0.14", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 86, "id": "KOBP-17", "name": "압축시험기(로드셀)", "serial": "서보프레스 E-1 (압입) 1101004", "spec": "2KN", "maker": "C&M Robotics", "location": "베어링 조립 E1", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±3", "ucLimit": "#VALUE!", "uc": "", "corr": "0.15", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 87, "id": "KOBP-18", "name": "압축시험기(로드셀)", "serial": "마찰재접착강도\nD1-수동", "spec": "30kgf (6EA)", "maker": "BONGSHIN", "location": "마찰재 접착", "usable": "○", "grade": "-", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±3", "ucLimit": "#VALUE!", "uc": "", "corr": "-0.83", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 88, "id": "KOBP-19", "name": "압축시험기(로드셀)", "serial": "서보프레스 D (압입) 24120723", "spec": "KN", "maker": "C&M Robotics", "location": "베어링 조립 D", "usable": "○", "grade": "A", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±3", "ucLimit": "#VALUE!", "uc": "", "corr": "0.14", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 89, "id": "KOBP-20", "name": "압축시험기(로드셀)", "serial": "코킹프레스 D (코킹) 24120722", "spec": "KN", "maker": "C&M Robotics", "location": "베어링 조립 D", "usable": "○", "grade": "A", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±3", "ucLimit": "#VALUE!", "uc": "", "corr": "0.2", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 90, "id": "KOBP-21", "name": "압축시험기(로드셀)", "serial": "마찰재접착강도 D", "spec": "20kgf (6EA)", "maker": "BONGSHIN", "location": "베어링 조립 D", "usable": "○", "grade": "A", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±3", "ucLimit": "#VALUE!", "uc": "", "corr": "0", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 91, "id": "KOBP-22", "name": "D/W 시험기 1호기 (로드셀)", "serial": "Z38401", "spec": "1000kgf (1EA)", "maker": "BONGSHIN", "location": "시험실", "usable": "○", "grade": "A", "cycle": "2년", "prev": "2024-04-24", "next": "", "calDate": "", "dday": null, "status": "일정미정", "minTol": "±3", "ucLimit": "#VALUE!", "uc": "", "corr": "0", "judg": "", "plan26": 0, "plan27": 1, "rrTarget": "", "rrCycle": "", "note": ""}, {"no": 92, "id": "KOBP-23", "name": "D/W 시험기 2호기 (로드셀)", "serial": "H26530", "spec": "1000kgf (1EA)", "maker": "BONGSHIN", "location": "시험실", "usable": "○", "grade": "A", "cycle": "2년", "prev": "2024-04-24", "next": "", "calDate": "", "dday": null, "status": "일정미정", "minTol": "±3", "ucLimit": "#VALUE!", "uc": "", "corr": "0", "judg": "", "plan26": 0, "plan27": 1, "rrTarget": "", "rrCycle": "", "note": ""}, {"no": 93, "id": "KOBP-24", "name": "D/W 시험기 2호기 (로드셀)", "serial": "K29732", "spec": "1000kgf (1EA)", "maker": "BONGSHIN", "location": "시험실", "usable": "○", "grade": "A", "cycle": "2년", "prev": "2024-04-24", "next": "", "calDate": "", "dday": null, "status": "일정미정", "minTol": "±3", "ucLimit": "#VALUE!", "uc": "", "corr": "0", "judg": "", "plan26": 0, "plan27": 1, "rrTarget": "", "rrCycle": "", "note": ""}, {"no": 94, "id": "KCRG-001", "name": "원통형 Ring Master", "serial": "KS02-006-01", "spec": "Ø50\n(49.987/49.971)", "maker": "-", "location": "베어링 조립 F", "usable": "○", "grade": "B", "cycle": "2년", "prev": "2024-10-17", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.005", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 95, "id": "KCRG-002", "name": "원통형 Ring Master", "serial": "KS02-006-02", "spec": "Ø52\n(51.987/51.970)", "maker": "-", "location": "베어링 조립 F", "usable": "○", "grade": "B", "cycle": "2년", "prev": "2024-10-17", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.005", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 96, "id": "KCRG-003", "name": "원통형 Ring Master", "serial": "KS02-006-03", "spec": "Ø55\n(54.986/54.970)", "maker": "-", "location": "베어링 조립 F", "usable": "○", "grade": "B", "cycle": "2년", "prev": "2025-04-14", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.005", "ucLimit": "#VALUE!", "uc": "", "corr": "0.001", "judg": "", "plan26": 0, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 97, "id": "KCRG-004", "name": "원통형 Ring Master", "serial": "160518001", "spec": "Ø52\n(51.986/51.970)", "maker": "TSM", "location": "베어링 조립 A", "usable": "○", "grade": "B", "cycle": "2년", "prev": "2024-04-29", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.005", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 98, "id": "KCRG-005", "name": "원통형 Ring Master", "serial": "160518002", "spec": "Ø55\n(54.987/54.971)", "maker": "TSM", "location": "베어링 조립 A", "usable": "○", "grade": "B", "cycle": "2년", "prev": "2024-04-29", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.005", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 99, "id": "KCRG-006", "name": "원통형 Ring Master", "serial": "TSM150206701", "spec": "Ø52(51.986/51.971)", "maker": "TSM", "location": "베어링 조립 B", "usable": "○", "grade": "B", "cycle": "2년", "prev": "2025-04-14", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.005", "ucLimit": "#VALUE!", "uc": "", "corr": "0.001", "judg": "", "plan26": 0, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 100, "id": "KCRG-007", "name": "원통형 Ring Master", "serial": "TSM150206702", "spec": "Ø55(54.987/54.973)", "maker": "TSM", "location": "베어링 조립 B", "usable": "○", "grade": "B", "cycle": "2년", "prev": "2025-04-14", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.005", "ucLimit": "#VALUE!", "uc": "", "corr": "0.001", "judg": "", "plan26": 0, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 101, "id": "KCRG-008", "name": "원통형 Ring Master", "serial": "KCRG-008", "spec": "Ø52(51.986/51.970)", "maker": "TSM", "location": "베어링 조립 C", "usable": "○", "grade": "B", "cycle": "2년", "prev": "2024-10-17", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.005", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 102, "id": "KCRG-009", "name": "원통형 Ring Master", "serial": "M-001", "spec": "Ø52(51.989/51.970)", "maker": "-", "location": "베어링 조립 E", "usable": "X", "grade": "B", "cycle": "2년", "prev": "2022-06-01", "next": "2024-10-01", "calDate": "", "dday": null, "status": "관리제외", "minTol": "±0.005", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": "폐기"}, {"no": 103, "id": "KCRG-010", "name": "원통형 Ring Master", "serial": "M-002", "spec": "Ø55(54.990/54.969)", "maker": "-", "location": "베어링 조립 E", "usable": "X", "grade": "B", "cycle": "2년", "prev": "2022-06-01", "next": "2024-10-01", "calDate": "", "dday": null, "status": "관리제외", "minTol": "±0.005", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": "폐기"}, {"no": 104, "id": "KCRG-011", "name": "원통형 Ring Master", "serial": "190828002", "spec": "Ø55(54.987/54.971)", "maker": "TSM", "location": "베어링 조립 C", "usable": "○", "grade": "B", "cycle": "2년", "prev": "2024-10-14", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.005", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 105, "id": "KCRG-012", "name": "원통형 Ring Master", "serial": "80380", "spec": "Ø52\n(51.987/51.970)", "maker": "TSM", "location": "베어링 조립 D", "usable": "○", "grade": "B", "cycle": "2년", "prev": "", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.005", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 106, "id": "KCRG-013", "name": "원통형 Ring Master", "serial": "136702", "spec": "Ø55\n(54.986/54.970)", "maker": "TSM", "location": "베어링 조립 D", "usable": "○", "grade": "B", "cycle": "2년", "prev": "", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.005", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 107, "id": "KLHG-009", "name": "디지매틱 하이트게이지", "serial": "0405492", "spec": "300 / 0.01mm", "maker": "MITUTOYO", "location": "베어링 조립 B", "usable": "○", "grade": "-", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 108, "id": "KLHG-010", "name": "디지매틱 하이트게이지", "serial": "1600659", "spec": "300 / 0.01mm", "maker": "MITUTOYO", "location": "베어링 조립 B", "usable": "○", "grade": "-", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 109, "id": "KLHG-011", "name": "디지매틱 하이트게이지", "serial": "1515951", "spec": "300 / 0.01mm", "maker": "MITUTOYO", "location": "베어링 조립 A", "usable": "○", "grade": "-", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 110, "id": "KLHG-012", "name": "디지매틱 하이트게이지", "serial": "13110620", "spec": "300 / 0.01mm", "maker": "MITUTOYO", "location": "베어링 조립 C", "usable": "○", "grade": "-", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 111, "id": "KLHG-016", "name": "디지매틱 하이트게이지", "serial": "2101168", "spec": "300 / 0.01mm", "maker": "INSIZE", "location": "베어링 조립 F", "usable": "○", "grade": "-", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 112, "id": "KLHG-019", "name": "디지매틱 하이트게이지", "serial": "0000643", "spec": "300 / 0.01mm", "maker": "MITUTOYO", "location": "베어링 조립 D", "usable": "○", "grade": "A", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": "25.07.22 신규구매"}, {"no": 113, "id": "KLVC-075", "name": "디지매틱 버니어캘리퍼스", "serial": "14335387", "spec": "200 / 0.01mm", "maker": "MITUTOYO", "location": "베어링 조립 A", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 114, "id": "KLVC-095", "name": "디지매틱 버니어캘리퍼스", "serial": "A17269245", "spec": "200 / 0.01mm", "maker": "MITUTOYO", "location": "베어링 조립 C", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-10", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 115, "id": "KWSC-006", "name": "전자식 지시저울", "serial": "D470500929", "spec": "2200g / 0.01g", "maker": "CAS", "location": "베어링 조립", "usable": "○", "grade": "-", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "±0.5", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": "분동으로검교정"}, {"no": 116, "id": "KLDL-005", "name": "디지메틱 게이지", "serial": "15213850", "spec": "12.7mm/0.001mm", "maker": "MITUTOYO", "location": "베어링 조립 B", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 117, "id": "KLDL-006", "name": "디지메틱 게이지", "serial": "14157332", "spec": "12.7mm/0.001mm", "maker": "MITUTOYO", "location": "베어링 조립 C", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 118, "id": "KLDL-009", "name": "디지메틱 게이지", "serial": "17111648", "spec": "12.7mm/0.001mm", "maker": "MITUTOYO", "location": "베어링 조립 C", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 119, "id": "KLDL-010", "name": "디지메틱 게이지", "serial": "17134910", "spec": "12.7mm/0.001mm", "maker": "MITUTOYO", "location": "베어링 조립 C", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 120, "id": "KLDL-012", "name": "디지메틱 게이지", "serial": "17134980", "spec": "12.7mm/0.001mm", "maker": "MITUTOYO", "location": "베어링 조립 C", "usable": "○", "grade": "-", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 121, "id": "KLDL-013", "name": "디지메틱 게이지", "serial": "16056797", "spec": "12.7mm/0.001mm", "maker": "MITUTOYO", "location": "베어링 조립 C", "usable": "○", "grade": "-", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 122, "id": "KLDL-014", "name": "디지메틱 게이지", "serial": "18112922", "spec": "12.7mm/0.001mm", "maker": "MITUTOYO", "location": "베어링 조립 C", "usable": "○", "grade": "-", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 123, "id": "KLDL-015", "name": "디지메틱 게이지", "serial": "17111697", "spec": "12.7mm/0.001mm", "maker": "MITUTOYO", "location": "베어링 조립 C", "usable": "○", "grade": "-", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 124, "id": "KLDL-016", "name": "디지메틱 게이지", "serial": "18112924", "spec": "12.7mm/0.001mm", "maker": "MITUTOYO", "location": "베어링 조립 C", "usable": "○", "grade": "-", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 125, "id": "KLDL-017", "name": "디지메틱 게이지", "serial": "18046983", "spec": "12.7mm/0.001mm", "maker": "MITUTOYO", "location": "베어링 조립 C", "usable": "○", "grade": "-", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 126, "id": "KLDL-018", "name": "디지메틱 게이지", "serial": "16056740", "spec": "12.7mm/0.001mm", "maker": "MITUTOYO", "location": "베어링 조립 C", "usable": "○", "grade": "-", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 127, "id": "KLDL-019", "name": "디지메틱 게이지", "serial": "18112919", "spec": "12.7mm/0.001mm", "maker": "MITUTOYO", "location": "베어링 조립 C", "usable": "○", "grade": "-", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 128, "id": "KLDL-020", "name": "디지메틱 게이지", "serial": "18112915", "spec": "12.7mm/0.001mm", "maker": "MITUTOYO", "location": "베어링 조립 C", "usable": "○", "grade": "-", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 129, "id": "KLDL-021", "name": "디지메틱 게이지", "serial": "18028059", "spec": "12.7mm/0.001mm", "maker": "MITUTOYO", "location": "베어링 조립 C", "usable": "○", "grade": "-", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 130, "id": "KLDL-022", "name": "디지메틱 게이지", "serial": "15213850", "spec": "12.7mm/0.001mm", "maker": "MITUTOYO", "location": "베어링 조립 B", "usable": "○", "grade": "-", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 131, "id": "KLDL-023", "name": "디지메틱 게이지", "serial": "17111655", "spec": "12.7mm/0.001mm", "maker": "MITUTOYO", "location": "베어링 조립 A", "usable": "○", "grade": "-", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 132, "id": "KLDL-026", "name": "인디게이터", "serial": "1223826", "spec": "0.8mm/0.01mm", "maker": "INSIZE", "location": "베어링 조립", "usable": "○", "grade": "-", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 133, "id": "KLMM-001", "name": "3점 마이크로미터", "serial": "505199", "spec": "50~63mm", "maker": "MITUTOYO", "location": "베어링 조립 A", "usable": "○", "grade": "-", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "", "ucLimit": "0", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": "링게이지로 검교정"}, {"no": 134, "id": "KOTM-001", "name": "복사온도계 (휴대용)", "serial": "27290011", "spec": "-40~550℃", "maker": "FLUKE\n561", "location": "베어링 조립 C", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-10-02", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 135, "id": "KOIH-002", "name": "조도측정기", "serial": "500601708", "spec": "Ra,Rz", "maker": "MITUTOYO", "location": "베어링 조립 B", "usable": "○", "grade": "B", "cycle": "2년", "prev": "2024-04-24", "next": "2026-04-30", "calDate": "2026-04-08", "dday": 0, "status": "만료임박", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 136, "id": "KOIH-003", "name": "조도측정기", "serial": "500792202", "spec": "Ra,Rz", "maker": "MITUTOYO", "location": "베어링 조립 F", "usable": "○", "grade": "B", "cycle": "2년", "prev": "2022-04-24", "next": "2026-04-30", "calDate": "2026-04-08", "dday": 0, "status": "만료임박", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 137, "id": "KLDL-032", "name": "다이얼 게이지", "serial": "DHKF89", "spec": "1mm/0.01mm", "maker": "MITUTOYO", "location": "베어링 조립 D1", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-30", "next": "2026-04-30", "calDate": "2026-04-08", "dday": 0, "status": "만료임박", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": "2025.04.30 신규구메"}, {"no": 138, "id": "KLDL-033", "name": "다이얼 게이지", "serial": "DHKG00", "spec": "1mm/0.01mm", "maker": "MITUTOYO", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-30", "next": "2026-04-30", "calDate": "2026-04-08", "dday": 0, "status": "만료임박", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": "2025.04.30 신규구메"}, {"no": 139, "id": "KLDL-034", "name": "디지털 게이지", "serial": "24120739", "spec": "1mm/0.001mm", "maker": "MITUTOYO", "location": "베어링 조립 D", "usable": "○", "grade": "A", "cycle": "1년", "prev": "2025-07-22", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": "25.07.22 신규구매"}, {"no": 140, "id": "KOHT-004", "name": "로크웰 경도기", "serial": "R110702", "spec": "60 ~ 150kg", "maker": "삼일정밀", "location": "현풍2공장", "usable": "○", "grade": "B", "cycle": "2년", "prev": "2025-04-09", "next": "", "calDate": "", "dday": null, "status": "일정미정", "minTol": "±5", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 141, "id": "KL2D-008", "name": "2차원측정기", "serial": "0002416", "spec": "350mm", "maker": "MITUTOYO", "location": "현풍2공장 (수입검사실)", "usable": "○", "grade": "A", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 142, "id": "KLHG-006", "name": "디지매틱 하이트게이지", "serial": "0322199", "spec": "300 / 0.01mm", "maker": "MITUTOYO", "location": "현풍2공장 (단조B)", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 143, "id": "KLHG-008", "name": "디지매틱 하이트게이지", "serial": "1419011", "spec": "300 / 0.01mm", "maker": "MITUTOYO", "location": "현풍2공장 (단조A)", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 144, "id": "KLHG-018", "name": "디지매틱 하이트게이지", "serial": "0002266", "spec": "300 / 0.01mm", "maker": "MITUTOYO", "location": "현풍2공장", "usable": "○", "grade": "A", "cycle": "1년", "prev": "2025-06-17", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 145, "id": "KLVC-092", "name": "디지매틱 버니어캘리퍼스", "serial": "0055118", "spec": "300 / 0.01mm", "maker": "MITUTOYO", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-09", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 146, "id": "KLVC-101", "name": "디지매틱 버니어캘리퍼스", "serial": "0009418", "spec": "300 / 0.01mm", "maker": "MITUTOYO", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 147, "id": "KLVC-117", "name": "디지매틱 버니어캘리퍼스", "serial": "0069529", "spec": "300 / 0.01mm", "maker": "MITUTOYO", "location": "현풍2공장 (수입검사실)", "usable": "○", "grade": "A", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.05", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 148, "id": "KWSC-003", "name": "전자식 지시저울", "serial": "MI-3500A\n(AAP421)", "spec": "2000Kg/0.5kg", "maker": "MIGUN", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-09", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.5", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 149, "id": "KWWC-001", "name": "분동1", "serial": "13634", "spec": "1Kg", "maker": "대도계기", "location": "현풍2공장", "usable": "○", "grade": "B", "cycle": "2년", "prev": "2025-04-14", "next": "", "calDate": "", "dday": null, "status": "일정미정", "minTol": "±0.5", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 150, "id": "KWWC-002", "name": "분동", "serial": "NONE", "spec": "200g", "maker": "대도계기", "location": "현풍2공장", "usable": "○", "grade": "B", "cycle": "2년", "prev": "2025-04-14", "next": "", "calDate": "", "dday": null, "status": "일정미정", "minTol": "±0.5", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 151, "id": "KWWC-003", "name": "분동2", "serial": "NONE", "spec": "1Kg", "maker": "", "location": "현풍2공장", "usable": "○", "grade": "B", "cycle": "2년", "prev": "2025-04-14", "next": "", "calDate": "", "dday": null, "status": "일정미정", "minTol": "±0.5", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 152, "id": "KWWC-004", "name": "분동3", "serial": "109", "spec": "1Kg", "maker": "대영계기", "location": "현풍2공장", "usable": "○", "grade": "B", "cycle": "2년", "prev": "2024-04-25", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.5", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 153, "id": "KWWC-005", "name": "분동4", "serial": "NONE", "spec": "100g", "maker": "대도계기", "location": "현풍2공장", "usable": "○", "grade": "B", "cycle": "2년", "prev": "2024-04-25", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.5", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 154, "id": "KLDL-003", "name": "인디케이터", "serial": "MJJ835", "spec": "1mm/0.01mm", "maker": "MITUTOYO", "location": "현풍2공장 (단조B)", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 155, "id": "KLDL-004", "name": "인디케이터", "serial": "TSS228", "spec": "1mm/0.01mm", "maker": "MITUTOYO", "location": "현풍2공장 (단조A)", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 156, "id": "KLDL-030", "name": "인디케이터", "serial": "WCW599", "spec": "1mm/0.01mm", "maker": "MITUTOYO", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 157, "id": "KLVC-079", "name": "롱죠 디지매틱 버니어캘리퍼스", "serial": "0018774", "spec": "300 / 0.01mm", "maker": "MITUTOYO", "location": "현풍2공장 (절단)", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-09-26", "next": "2026-10-31", "calDate": "", "dday": 184, "status": "유효", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 158, "id": "KOTM-002", "name": "복사온도계 (휴대용)", "serial": "12047737", "spec": "-40~550℃", "maker": "IfraRed", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-14", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 159, "id": "KOTC-001", "name": "비금속 열전대", "serial": "21289", "spec": "K-TYPE", "maker": "GYODONG", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 160, "id": "KOTC-002", "name": "비금속 열전대", "serial": "23736", "spec": "K-TYPE (400mm)", "maker": "GYODONG", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 161, "id": "KOTC-003", "name": "비금속 열전대", "serial": "21907", "spec": "K-TYPE (400mm)", "maker": "GYODONG", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 162, "id": "KOTC-004", "name": "비금속 열전대", "serial": "21906", "spec": "K-TYPE", "maker": "SHINYOUNG", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 163, "id": "KOTC-005", "name": "비금속 열전대", "serial": "21910", "spec": "K-TYPE (550mm)", "maker": "SHINYOUNG", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 164, "id": "KOTC-006", "name": "비금속 열전대", "serial": "23739", "spec": "K-TYPE (630mm)", "maker": "SHIN YU", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 165, "id": "KOTC-007", "name": "비금속 열전대", "serial": "21908", "spec": "K-TYPE (550mm)", "maker": "SHINYOUNG", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 166, "id": "KOTC-008", "name": "비금속 열전대", "serial": "21909", "spec": "K-TYPE (550mm)", "maker": "SHINYOUNG", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 167, "id": "KOTC-009", "name": "비금속 열전대", "serial": "21287", "spec": "K-TYPE (500mm)", "maker": "SHIN YU", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 168, "id": "KOTC-010", "name": "비금속 열전대", "serial": "21288", "spec": "K-TYPE (500mm)", "maker": "SHIN YU", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 169, "id": "KOTC-011", "name": "비금속 열전대", "serial": "21987", "spec": "K-TYPE (550mm)", "maker": "SHIN YU", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 170, "id": "KOTC-012", "name": "비금속 열전대", "serial": "190502-1", "spec": "K-TYPE (550mm)", "maker": "SIN YOUNG", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 171, "id": "KOTC-013", "name": "비금속 열전대", "serial": "190502-2", "spec": "K-TYPE (550mm)", "maker": "SIN YOUNG", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 172, "id": "KOTC-014", "name": "비금속 열전대", "serial": "190502-3", "spec": "K-TYPE (550mm)", "maker": "SIN YOUNG", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 173, "id": "KOTC-015", "name": "비금속 열전대", "serial": "190502-4", "spec": "K-TYPE", "maker": "SIN YOUNG", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 174, "id": "KOTC-016", "name": "비금속 열전대", "serial": "190502-5", "spec": "K-TYPE (550mm)", "maker": "SIN YOUNG", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 175, "id": "KOTC-017", "name": "비금속 열전대", "serial": "190502-6", "spec": "K-TYPE (550mm)", "maker": "SIN YOUNG", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 176, "id": "KOTC-018", "name": "비금속 열전대", "serial": "190502-7", "spec": "K-TYPE (550mm)", "maker": "SIN YOUNG", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 177, "id": "KOTC-019", "name": "비금속 열전대", "serial": "190502-8", "spec": "K-TYPE (550mm)", "maker": "SIN YOUNG", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 178, "id": "KOTC-020", "name": "비금속 열전대", "serial": "190502-9", "spec": "K-TYPE (550mm)", "maker": "SIN YOUNG", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 179, "id": "KOTC-021", "name": "비금속 열전대", "serial": "190502-10", "spec": "K-TYPE (550mm)", "maker": "SIN YOUNG", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 180, "id": "KOTC-022", "name": "비금속 열전대", "serial": "KH1907-01", "spec": "K-TYPE (400mm)", "maker": "SANUP E.N.GT.", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 181, "id": "KOTC-023", "name": "비금속 열전대", "serial": "KH1907-02", "spec": "K-TYPE (400mm)", "maker": "SANUP E.N.GT.", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 182, "id": "KOTC-024", "name": "비금속 열전대", "serial": "KH1907-03", "spec": "K-TYPE (400mm)", "maker": "SANUP E.N.GT.", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 183, "id": "KOTC-025", "name": "비금속 열전대", "serial": "21285", "spec": "K-TYPE (700mm)", "maker": "SANUP E.N.GT.", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 184, "id": "KOTC-026", "name": "비금속 열전대", "serial": "23740", "spec": "K-TYPE (550mm)", "maker": "SHIN YU", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 185, "id": "KOTC-027", "name": "비금속 열전대", "serial": "21286", "spec": "K-TYPE (500mm)", "maker": "SHIN YU", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 186, "id": "KOTC-028", "name": "비금속 열전대", "serial": "21251", "spec": "K-TYPE (700mm)", "maker": "INTER PYRO", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 187, "id": "KOTC-029", "name": "비금속 열전대", "serial": "21290", "spec": "K-TYPE (400mm)", "maker": "GYODONG", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 188, "id": "KOTC-030", "name": "비금속 열전대", "serial": "21284", "spec": "K-TYPE (550mm)", "maker": "SHIN YU", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 189, "id": "KOTC-031", "name": "비금속 열전대", "serial": "HK1804-01", "spec": "K-TYPE (700mm)", "maker": "SIN YOUNG", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "○", "rrCycle": "1년", "note": ""}, {"no": 190, "id": "KOTC-032", "name": "비금속 열전대", "serial": "21912", "spec": "K-TYPE (630mm)", "maker": "SIN YOUNG", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 191, "id": "KOTC-033", "name": "비금속 열전대", "serial": "21911", "spec": "K-TYPE (630mm)", "maker": "SIN YOUNG", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 192, "id": "KOTC-034", "name": "비금속 열전대", "serial": "21249", "spec": "K-TYPE (550mm)", "maker": "SHIN YU", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 193, "id": "KOTC-035", "name": "비금속 열전대", "serial": "23737", "spec": "K-TYPE (630mm)", "maker": "SHIN YU", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 194, "id": "KOTC-036", "name": "비금속 열전대", "serial": "12450", "spec": "K-TYPE (600mm)", "maker": "SHIN YU", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 195, "id": "KOTC-037", "name": "비금속 열전대", "serial": "21252", "spec": "K-TYPE (550mm)", "maker": "SHIN YU", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 196, "id": "KOTC-038", "name": "비금속 열전대", "serial": "220524-1", "spec": "K-TYPE (550mm)", "maker": "SIN YOUNG", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 197, "id": "KOTC-039", "name": "비금속 열전대", "serial": "220524-2", "spec": "K-TYPE (550mm)", "maker": "SIN YOUNG", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 198, "id": "KOTC-040", "name": "비금속 열전대", "serial": "220524-3", "spec": "K-TYPE (550mm)", "maker": "SIN YOUNG", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 199, "id": "KOTC-041", "name": "비금속 열전대", "serial": "220524-4", "spec": "K-TYPE (700mm)", "maker": "SIN YOUNG", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 200, "id": "KOTC-042", "name": "비금속 열전대", "serial": "220524-5", "spec": "K-TYPE (700mm)", "maker": "SIN YOUNG", "location": "현풍2공장", "usable": "○", "grade": "C", "cycle": "1년", "prev": "2025-04-17", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±10", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 201, "id": "KL3D-003", "name": "3차원 측정기", "serial": "425225034770", "spec": "700X1000X600mm", "maker": "ZEISS", "location": "현풍2공장", "usable": "○", "grade": "A", "cycle": "2년", "prev": "2025-06-02", "next": "", "calDate": "", "dday": null, "status": "일정미정", "minTol": "0.005 이내", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": "25.06.05 신규구매"}, {"no": 202, "id": "KOFM-002", "name": "형상 측정기", "serial": "400232503", "spec": "100mm", "maker": "MITUTOYO", "location": "현풍2공장", "usable": "○", "grade": "A", "cycle": "2년", "prev": "2025-06-17", "next": "", "calDate": "", "dday": null, "status": "일정미정", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 1, "rrTarget": "X", "rrCycle": "X", "note": "25.06.05 신규구매"}, {"no": 203, "id": "KWSC-007", "name": "전자식 지시저울", "serial": "C344060635", "spec": "6200g/0.01g", "maker": "OHAUS", "location": "현풍2공장", "usable": "○", "grade": "A", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "±0.5", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": "25.10.27 신규구매"}, {"no": 204, "id": "", "name": "가열로 온도계", "serial": "", "spec": "", "maker": "", "location": "현풍2공장", "usable": "○", "grade": "A", "cycle": "1년", "prev": "", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "", "ucLimit": "0", "uc": "", "corr": "", "judg": "", "plan26": 1, "plan27": 1, "rrTarget": "", "rrCycle": "", "note": ""}, {"no": 205, "id": "KWSC-008", "name": "전자식 지시저울", "serial": "C444991211", "spec": "6200g/0.01g", "maker": "OHAUS", "location": "현풍2공장", "usable": "○", "grade": "A", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "±0.5", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": "26.04.10 신규구매"}, {"no": 206, "id": "KWSC-009", "name": "전자식 지시저울", "serial": "C444991219", "spec": "6200g/0.01g", "maker": "OHAUS", "location": "현풍2공장", "usable": "○", "grade": "A", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "±0.1", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": "26.04.10 신규구매"}, {"no": 207, "id": "KCRG-015", "name": "원통형 RING MASTER", "serial": "468909", "spec": "35mm (34.998)", "maker": "BOWERS", "location": "CNC(SPIDER&INNER RACE)", "usable": "○", "grade": "A", "cycle": "2년", "prev": "2024-06-11", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.005", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 208, "id": "KCRG-016", "name": "원통형 Ring Master", "serial": "80380", "spec": "Ø52\n(51.987/51.970)", "maker": "TSM", "location": "베어링 조립 D", "usable": "○", "grade": "B", "cycle": "2년", "prev": "", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.005", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 209, "id": "KCRG-017", "name": "원통형 Ring Master", "serial": "136702", "spec": "Ø55\n(54.986/54.970)", "maker": "TSM", "location": "베어링 조립 D", "usable": "○", "grade": "B", "cycle": "2년", "prev": "", "next": "", "calDate": "2026-04-08", "dday": null, "status": "일정미정", "minTol": "±0.005", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": ""}, {"no": 210, "id": "KOPP-001", "name": "투영기(현장)", "serial": "151392", "spec": "350 mm", "maker": "MITUTOYO", "location": "CNC", "usable": "X", "grade": "B", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "±0.01", "ucLimit": "#VALUE!", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": "형상확인용\n검교정 미대상"}, {"no": 211, "id": "KOPS-001", "name": "석정반", "serial": "10751212", "spec": "1,000 X 750mm", "maker": "", "location": "측정실", "usable": "○", "grade": "B", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "", "ucLimit": "0", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": "이동시 검교정"}, {"no": 212, "id": "KOPS-002", "name": "석정반", "serial": "측정실2", "spec": "1,000 X 750mm", "maker": "ZUNGWOO", "location": "측정실", "usable": "○", "grade": "B", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "", "ucLimit": "0", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": "이동시 검교정"}, {"no": 213, "id": "KOPS-003", "name": "석정반", "serial": "10750919", "spec": "1,000 X 750mm", "maker": "", "location": "CNC", "usable": "○", "grade": "B", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "", "ucLimit": "0", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": "이동시 검교정"}, {"no": 214, "id": "KOPS-004", "name": "석정반", "serial": "PA015-12-83", "spec": "600 X 450mm", "maker": "HANDO", "location": "베어링 조립 A", "usable": "○", "grade": "B", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "", "ucLimit": "0", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": "이동시 검교정"}, {"no": 215, "id": "KOPS-005", "name": "석정반", "serial": "PA015-12-88", "spec": "600 X 450mm", "maker": "HANDO", "location": "베어링 조립 C", "usable": "○", "grade": "B", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "", "ucLimit": "0", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": "이동시 검교정"}, {"no": 216, "id": "KOPS-006", "name": "석정반", "serial": "164003", "spec": "1,000 X 750mm", "maker": "ZUNGWOO", "location": "베어링 조립 B", "usable": "○", "grade": "B", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "", "ucLimit": "0", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": "이동시 검교정"}, {"no": 217, "id": "KOPS-007", "name": "석정반", "serial": "6045928", "spec": "600 X 450mm", "maker": "Taekeong", "location": "수입검사실", "usable": "○", "grade": "B", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "", "ucLimit": "0", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": "이동시 검교정"}, {"no": 218, "id": "KOPS-008", "name": "석정반", "serial": "KOPS-008", "spec": "1,000 X 750mm", "maker": "ZUNGWOO", "location": "베어링 조립 C", "usable": "○", "grade": "B", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "", "ucLimit": "0", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": "이동시 검교정"}, {"no": 219, "id": "KOPS-009", "name": "석정반", "serial": "20231130", "spec": "750*500mm", "maker": "정우정반", "location": "현풍2공장", "usable": "○", "grade": "A", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "", "ucLimit": "0", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "○", "rrCycle": "1년", "note": "이동시 검교정"}, {"no": 220, "id": "KOPS-010", "name": "석정반", "serial": "KOPS-010", "spec": "1,000 X 750mm", "maker": "ZUNGWOO", "location": "베어링 조립 D", "usable": "○", "grade": "A", "cycle": "X", "prev": "", "next": "", "calDate": "", "dday": null, "status": "관리제외", "minTol": "", "ucLimit": "0", "uc": "", "corr": "", "judg": "", "plan26": 0, "plan27": 0, "rrTarget": "X", "rrCycle": "X", "note": "25.07.22 신규구매"}];
+const BASE="https://WonCHan-QA.github.io/gauge/";
+let CUR=null;
+
+const SC={
+  '유효':   {icon:'●',accent:'var(--green)', cls:'b-유효'},
+  '주의':   {icon:'●',accent:'var(--yellow)',cls:'b-주의'},
+  '만료임박':{icon:'▲',accent:'var(--orange)',cls:'b-만료임박'},
+  '기간초과':{icon:'■',accent:'var(--red)',  cls:'b-기간초과'},
+  '관리제외':{icon:'○',accent:'var(--gray)', cls:'b-관리제외'},
+  '일정미정':{icon:'○',accent:'var(--txt3)', cls:'b-일정미정'},
+};
+const SACC={
+  '유효':'var(--green)','주의':'var(--yellow)',
+  '만료임박':'var(--orange)','기간초과':'var(--red)',
+  '관리제외':'var(--gray)','일정미정':'var(--txt3)'
+};
+
+function badge(s){const c=SC[s]||SC['일정미정'];return`<span class="badge ${c.cls}">${c.icon} ${s}</span>`}
+function ddCls(d,s){if(d===null||d===undefined)return'';if(d<0)return'dday-over';if(d<=30)return'dday-soon';if(d<=90)return'dday-warn';return'dday-ok'}
+function ddTxt(d,s){if(s==='관리제외')return'—';if(d===null||d===undefined)return'—';if(d<0)return`D+${Math.abs(d)}`;if(d===0)return'D-0';return`D-${d}`}
+function judgBadge(j){if(!j)return'—';if(j.toUpperCase()==='OK')return'<span class="judg-ok">✔ OK</span>';if(j.toUpperCase()==='NG')return'<span class="judg-ng">✘ NG</span>';return j}
+function rrBadge(t,c){
+  if(!t||t==='X')return`<span style="color:var(--txt3);font-size:11px">제외</span>`;
+  return`<span style="color:var(--green);font-size:11px;font-weight:600">○</span> <span style="font-size:11px;color:var(--txt2)">${c||''}</span>`;
+}
+
+// ── STATS ──────────────────────────────────────────────────────────────────
+function renderStats(){
+  const cnt={};G.forEach(g=>{cnt[g.status]=(cnt[g.status]||0)+1});
+  const items=[
+    {l:'전체계측기',v:G.length,c:'var(--a)',acc:'var(--a)',f:''},
+    {l:'✅ 유효',v:cnt['유효']||0,c:'var(--green)',acc:SACC['유효'],f:'유효'},
+    {l:'⚠ 주의',v:cnt['주의']||0,c:'var(--yellow)',acc:SACC['주의'],f:'주의'},
+    {l:'🔶 만료임박',v:cnt['만료임박']||0,c:'var(--orange)',acc:SACC['만료임박'],f:'만료임박'},
+    {l:'🔴 기간초과',v:cnt['기간초과']||0,c:'var(--red)',acc:SACC['기간초과'],f:'기간초과'},
+    {l:'⚫ 관리제외',v:cnt['관리제외']||0,c:'var(--gray)',acc:SACC['관리제외'],f:'관리제외'},
+  ];
+  document.getElementById('stat-grid').innerHTML=items.map(s=>`
+    <div class="stat-card" style="--accent-c:${s.acc}" onclick="filterStat('${s.f}')">
+      <div class="s-label">${s.l}</div>
+      <div class="s-val" style="color:${s.c}">${s.v}</div>
+    </div>`).join('');
+}
+
+function filterStat(f){
+  document.getElementById('f-status').value=f;
+  applyFilters();
+}
+
+// ── LOCATION OPTIONS ───────────────────────────────────────────────────────
+function buildLocs(){
+  const locs=[...new Set(G.map(g=>g.location.split('(')[0].trim()).filter(Boolean))].sort();
+  ['f-loc','p-loc'].forEach(id=>{
+    const sel=document.getElementById(id);if(!sel)return;
+    const f=sel.options[0].outerHTML;
+    sel.innerHTML=f+locs.map(l=>`<option value="${l}">${l}</option>`).join('');
+  });
+}
+
+// ── TABLE ──────────────────────────────────────────────────────────────────
+function renderTable(arr){
+  const body=document.getElementById('tbl-body');
+  const noRes=document.getElementById('no-res');
+  document.getElementById('f-count').textContent=`${arr.length}개`;
+  if(!arr.length){body.innerHTML='';noRes.style.display='block';return}
+  noRes.style.display='none';
+  body.innerHTML=arr.map(g=>`
+    <tr onclick="showDetail('${g.id}')">
+      <td class="mono" style="color:var(--txt3)">${g.no}</td>
+      <td class="mono id-cell">${g.id||'—'}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${g.name}</td>
+      <td style="color:var(--txt2);font-size:11px">${g.location}</td>
+      <td style="text-align:center;font-weight:600;color:${g.grade==='A'?'var(--a)':g.grade==='B'?'var(--green)':'var(--txt2)'}">${g.grade||'—'}</td>
+      <td style="text-align:center;color:var(--txt3)">${g.cycle||'—'}</td>
+      <td class="mono" style="font-size:11px;color:var(--txt2)">${g.next||'—'}</td>
+      <td class="mono ${ddCls(g.dday,g.status)}">${ddTxt(g.dday,g.status)}</td>
+      <td>${badge(g.status)}</td>
+      <td>${judgBadge(g.judg)}</td>
+      <td style="text-align:center">${g.rrTarget==='○'?'<span style="color:var(--green);font-weight:700">○</span>':'<span style="color:var(--txt3)">✕</span>'}</td>
+    </tr>`).join('');
+}
+
+// ── FILTERS ───────────────────────────────────────────────────────────────
+function applyFilters(){
+  const q=document.getElementById('search-input').value.toLowerCase();
+  const st=document.getElementById('f-status').value;
+  const loc=document.getElementById('f-loc').value;
+  const gr=document.getElementById('f-grade').value;
+  const jd=document.getElementById('f-judg').value;
+  const rr=document.getElementById('f-rr').value;
+  const arr=G.filter(g=>{
+    if(st&&g.status!==st)return false;
+    if(loc&&!g.location.includes(loc))return false;
+    if(gr&&g.grade!==gr)return false;
+    if(jd&&(g.judg||'').toUpperCase()!==jd.toUpperCase())return false;
+    if(rr&&g.rrTarget!==rr)return false;
+    if(q&&!`${g.id} ${g.name} ${g.location} ${g.serial} ${g.maker}`.toLowerCase().includes(q))return false;
+    return true;
+  });
+  renderTable(arr);
+}
+document.getElementById('search-input').addEventListener('input',applyFilters);
+
+// ── DETAIL ────────────────────────────────────────────────────────────────
+function showDetail(id){
+  const g=G.find(x=>x.id===id);if(!g)return;
+  CUR=g;
+  document.getElementById('view-list').style.display='none';
+  document.getElementById('view-print').style.display='none';
+  document.getElementById('view-detail').style.display='block';
+  document.getElementById('nav-title').textContent=g.id;
+  document.getElementById('search-box').style.display='none';
+  document.getElementById('btn-print-nav').style.display='none';
+
+  // Hero
+  document.getElementById('d-name').textContent=g.name;
+  document.getElementById('d-id').textContent=g.id;
+
+  // Status row
+  const dd=ddTxt(g.dday,g.status);
+  const dc=ddCls(g.dday,g.status);
+  const ddLabel=g.dday!==null?(g.dday<0?`${Math.abs(g.dday)}일 초과`:`차기 교정까지 ${g.dday}일`):'';
+  document.getElementById('d-status-row').innerHTML=`
+    ${badge(g.status)}
+    ${judgBadge(g.judg)}
+    <div>
+      <div class="dday-big ${dc}">${dd}</div>
+      <div class="dday-sub">${ddLabel}</div>
+    </div>`;
+
+  // Note
+  const noteEl=document.getElementById('d-note');
+  if(g.note){noteEl.textContent='📝 '+g.note;noteEl.style.display='block'}
+  else{noteEl.style.display='none'}
+
+  // QR
+  const qrDiv=document.getElementById('det-qr');
+  qrDiv.innerHTML='';
+  new QRCode(qrDiv,{text:`${BASE}?id=${encodeURIComponent(g.id)}`,width:100,height:100,colorDark:'#0d1320',correctLevel:QRCode.CorrectLevel.H});
+  document.getElementById('det-qr-id').textContent=g.id;
+
+  // Info grid
+  document.getElementById('d-info').innerHTML=[
+    {l:'명칭',v:g.name},
+    {l:'관리번호',v:g.id,mono:true},
+    {l:'S/N · CODE',v:g.serial,mono:true},
+    {l:'제작회사',v:g.maker},
+    {l:'규격',v:g.spec,span2:true},
+    {l:'사내위치',v:g.location,span2:true},
+    {l:'사용가능',v:g.usable},
+    {l:'등급',v:g.grade||'—'},
+    {l:'검교정주기',v:g.cycle||'—'},
+    {l:'최소관리공차',v:g.minTol||'—',mono:true},
+  ].map(f=>`
+    <div class="info-card${f.span2?' span2':''}">
+      <div class="ic-label">${f.l}</div>
+      <div class="ic-val${f.mono?' mono':''}">${f.v||'—'}</div>
+    </div>`).join('');
+
+  // UC section
+  const hasUC=g.ucLimit||g.uc||g.corr||g.judg;
+  const ucEl=document.getElementById('d-uc');
+  if(hasUC){
+    ucEl.style.display='block';
+    const jColor=g.judg==='OK'?'var(--ok-c)':g.judg==='NG'?'var(--ng-c)':'var(--txt3)';
+    ucEl.innerHTML=`
+      <h3>측정불확도 분석</h3>
+      <div class="uc-row">
+        <div class="uc-card">
+          <div class="uc-label">최소관리공차</div>
+          <div class="uc-val" style="color:var(--a)">${g.minTol||'—'}</div>
+        </div>
+        <div class="uc-card">
+          <div class="uc-label">허용한계 (T/4)</div>
+          <div class="uc-val" style="color:var(--yellow)">${g.ucLimit||'—'}</div>
+        </div>
+        <div class="uc-card">
+          <div class="uc-label">측정불확도</div>
+          <div class="uc-val" style="color:var(--txt)">${g.uc||'—'}</div>
+        </div>
+        <div class="uc-card">
+          <div class="uc-label">판정결과</div>
+          <div class="uc-val" style="color:${jColor}">${g.judg||'—'}</div>
+        </div>
+      </div>
+      ${g.corr?`<div style="margin-top:10px;padding:8px 12px;background:var(--c2);border-radius:var(--r);font-size:12px;color:var(--txt2)">보정값: <span class="mono" style="color:var(--a3)">${g.corr}</span></div>`:''}`;
+  }else{ucEl.style.display='none'}
+
+  // Timeline
+  const tlColor=g.status==='기간초과'?'var(--red)':g.status==='만료임박'?'var(--orange)':'var(--green)';
+  document.getElementById('d-tl').innerHTML=`
+    <h3>검교정 이력</h3>
+    ${[
+      {l:'기존 검교정일',d:g.prev,c:'var(--txt3)'},
+      {l:'실시 검교정일',d:g.calDate,c:'var(--a)'},
+      {l:'차기 검교정일',d:g.next,c:tlColor},
+    ].map(t=>`<div class="tl-item">
+      <div class="tl-dot" style="background:${t.c}"></div>
+      <div class="tl-label">${t.l}</div>
+      <div class="tl-date" style="color:${t.c}">${t.d||'—'}</div>
+    </div>`).join('')}`;
+
+  // R&R
+  document.getElementById('d-rr').innerHTML=`
+    <h3>게이지 R&R</h3>
+    <div class="rr-row">
+      <div class="rr-chip">대상: <strong style="color:${g.rrTarget==='○'?'var(--green)':'var(--txt3)'}">${g.rrTarget||'—'}</strong></div>
+      <div class="rr-chip">주기: <strong style="color:var(--a3)">${g.rrCycle||'—'}</strong></div>
+      ${g.plan26?'<div class="rr-chip" style="color:var(--green)">✔ 26년 계획</div>':''}
+      ${g.plan27?'<div class="rr-chip" style="color:var(--a3)">✔ 27년 계획</div>':''}
+    </div>`;
+
+  window.scrollTo(0,0);
+}
+
+// ── PRINT ─────────────────────────────────────────────────────────────────
+function showPrint(){
+  document.getElementById('view-list').style.display='none';
+  document.getElementById('view-detail').style.display='none';
+  document.getElementById('view-print').style.display='block';
+  document.getElementById('nav-title').textContent='QR 라벨 출력';
+  document.getElementById('search-box').style.display='none';
+  document.getElementById('btn-print-nav').style.display='none';
+  renderLabels();
+}
+
+function renderLabels(){
+  const pf=document.getElementById('p-status').value;
+  const pl=document.getElementById('p-loc').value;
+  let arr=G.filter(g=>g.id);
+  if(pf==='관리제외 제외') arr=arr.filter(g=>g.status!=='관리제외');
+  else if(pf) arr=arr.filter(g=>g.status===pf);
+  if(pl) arr=arr.filter(g=>g.location.includes(pl));
+  document.getElementById('p-count').textContent=`${arr.length}개`;
+  const grid=document.getElementById('lbl-grid');
+  grid.innerHTML='';
+  arr.forEach((g,i)=>{
+    const jHtml=g.judg?`<div class="lc-judg ${g.judg.toUpperCase()==='OK'?'lj-ok':'lj-ng'}">${g.judg}</div>`:'';
+    const card=document.createElement('div');
+    card.className='lbl-card';
+    // ✅ QR div을 innerHTML 안에 id로 직접 포함 (insertBefore + innerHTML+= 버그 방지)
+    card.innerHTML=`
+      <div id="lqr-${i}" style="min-height:80px;display:flex;align-items:center;justify-content:center"></div>
+      <div class="lc-id">${g.id}</div>
+      <div class="lc-name">${g.name}</div>
+      <div class="lc-status ls-${g.status}">${g.status}</div>
+      ${g.next?`<div class="lc-date">차기: ${g.next}</div>`:''}
+      ${jHtml}`;
+    grid.appendChild(card);
+    // ✅ setTimeout에서 getElementById로 DOM 재탐색
+    setTimeout(()=>{
+      const el=document.getElementById(`lqr-${i}`);
+      if(el) new QRCode(el,{text:`${BASE}?id=${encodeURIComponent(g.id)}`,width:80,height:80,colorDark:'#0d1320',correctLevel:QRCode.CorrectLevel.H});
+    },Math.floor(i/6)*30 + 10);
+  });
+}
+
+function printOneLbl(){
+  if(!CUR)return;
+  const g=CUR;
+  const url=`${BASE}?id=${encodeURIComponent(g.id)}`;
+  const w=window.open('','_blank','width=340,height=420');
+  const jStyle=g.judg&&g.judg.toUpperCase()==='OK'?'background:#d1fae5;color:#065f46':g.judg&&g.judg.toUpperCase()==='NG'?'background:#fee2e2;color:#991b1b':'background:#f1f5f9;color:#475569';
+  w.document.write(`<!DOCTYPE html><html><head>
+    <style>body{font-family:sans-serif;display:flex;justify-content:center;padding:20px}
+    .c{border:2px solid #1a2640;border-radius:8px;padding:16px;width:180px;text-align:center}
+    #q{margin:0 auto 8px}.id{font-family:monospace;font-size:10px;font-weight:700;color:#0d1320}
+    .nm{font-size:8px;color:#334155;margin:3px 0}.st{font-size:8px;font-weight:700;padding:2px 8px;border-radius:100px;display:inline-block;margin:2px}
+    .dt{font-size:8px;color:#64748b;font-family:monospace}.jd{font-size:9px;font-weight:700;padding:2px 8px;border-radius:4px;margin-top:3px;display:inline-block}
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>
+    </head><body><div class="c">
+    <div id="q"></div>
+    <div class="id">${g.id}</div>
+    <div class="nm">${g.name}</div>
+    <span class="st" style="${g.status==='유효'?'background:#d1fae5;color:#065f46':g.status==='기간초과'?'background:#fee2e2;color:#991b1b':'background:#fff3cd;color:#856404'}">${g.status}</span>
+    ${g.next?`<div class="dt">차기: ${g.next}</div>`:''}
+    ${g.judg?`<div class="jd" style="${jStyle}">${g.judg}</div>`:''}
+    </div>
+    <script>new QRCode(document.getElementById('q'),{text:'${url}',width:130,height:130,colorDark:'#0d1320',correctLevel:QRCode.CorrectLevel.H});setTimeout(()=>window.print(),800);<\/script>
+    </body></html>`);
+}
+
+function showList(){
+  document.getElementById('view-list').style.display='block';
+  document.getElementById('view-detail').style.display='none';
+  document.getElementById('view-print').style.display='none';
+  document.getElementById('nav-title').textContent='게이지 검교정 관리';
+  document.getElementById('search-box').style.display='flex';
+  document.getElementById('btn-print-nav').style.display='block';
+  CUR=null;window.scrollTo(0,0);
+}
+
+function handleRoute(){
+  const id=new URLSearchParams(window.location.search).get('id');
+  if(id&&G.find(x=>x.id===id)){showDetail(id);return}
+  showList();
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded',()=>{
+  renderStats();
+  buildLocs();
+  renderTable(G);
+  handleRoute();
+  setTimeout(()=>{
+    document.getElementById('scan-overlay').classList.add('hidden');
+  },900);
+});
+</script>
+</body>
+</html>
